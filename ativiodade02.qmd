@@ -1,0 +1,101 @@
+---
+title: "Atividade 04"
+format: html
+editor: visual
+warning: false
+message: false
+---
+
+## **OBJETIVO DA ATIVIDADE**
+
+Objetivo desta atividade é mostrar mostrar o PIB em (mil reais) por unidade da federação, para mostrar quais os Estados que possuem um PIB mais elevade e quais Estados possuem o PIB com os indices mais baixos.
+
+## **METODOLOGIA**
+
+A metodologia ultilizada nessa atividade foi a integração entre Sidra e Geobr, primeiramente instalei os pacotes, "sidrar", "geobr", "sf", "dplyr", "ggplot2", logo em seguida dei o comando para ler os pacotes e poder rodar os codigos, utilizei a tabela do Sidra do periodo de 2021, referente ao PIB por Estado. fiz a integração do Geobr com o Sidra para poder gerar a imagem final, no caso o mapa.
+
+```{undefined}
+#| eval: false
+#| include: false
+{r}
+install.packages("sidrar")
+install.packages(c("geobr", "sf", "dplyr", "ggplot2"))
+install.packages("rmarkdown")
+install.packages("knitr")
+install.packages("kableExtra")
+```
+
+```{r}
+#| echo: false
+
+library(sidrar)
+library(sf)
+library(geobr)  
+library(dplyr)
+library(ggplot2)
+library(rmarkdown)
+library(knitr)
+library(kableExtra)
+```
+
+------------------------------------------------------------------------
+
+## **MAPA**
+
+```{r}
+#| echo: true
+ # Tabela do PIB por UF (exemplo com dados de 2021 da Tabela 5938)
+dados_sidra <- get_sidra(x = 5938,
+                         variable = 37, 
+                         period = "2021",
+                         geo = "State")
+
+
+dados_sidra_clean <- dados_sidra %>%
+  select(code_state = `Unidade da Federação (Código)`, 
+    uf_nome = `Unidade da Federação`,             
+    valor_pib = Valor) %>%
+  
+mutate(code_state = as.numeric(code_state))
+
+mapa_uf <- read_state(year =2020, showProgress = FALSE)
+
+mapa_final <- left_join(mapa_uf, dados_sidra_clean, by = "code_state")
+
+ggplot(data = mapa_final) +
+  geom_sf(aes(fill = valor_pib)) +
+  scale_fill_viridis_c(name = "PIB (Mil Reais)") +
+  theme_minimal() +
+  labs(title = "PIB por Unidade da Federação (2021)")
+
+```
+
+O mapa acima permite visualizar a concentração do PIB no território brasileiro. É possível observar que os estados das regiões *Sudeste e Sul* concentram os maiores valores, enquanto os estados das regiões *Norte e Nordeste* apresentam os menores índices.
+
+## **TABELA**
+
+```{r}
+#| echo: true
+tabela_pib <- dados_sidra_clean %>%
+  select(uf_nome, valor_pib) %>%
+  arrange(desc(valor_pib))
+
+tabela_pib$uf_nome = as.character(tabela_pib$uf_nome)
+tabela_pib$valor_pib = as.numeric(as.character(tabela_pib$valor_pib))
+
+colnames(tabela_pib) = c("Estado", "PIB (Mil Reais)")
+
+kable(tabela_pib, 
+      caption = "PIB por Unidade da Federação (2021)", 
+      align = "lc",
+      format.args = list(big.mark = ".", decimal.mark = ",")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  footnote(general = "Elaboração própria com dados do IBGE/Sidra (2021).",
+           general_title = "Fonte:",
+           footnote_as_chunk = TRUE,
+           title_format = c("bold"))
+```
+
+A tabela apresenta os valores do PIB em mil reais para cada estado, ordenados do maior para o menor. Destacam-se *São Paulo, Rio de Janeiro e Minas Gerais* como os estados com maior participação no PIB nacional, reflexo da concentração industrial e de serviços nessas regiões.
+
+Os resultados evidenciam uma forte desigualdade regional no Brasil. A disparidade entre os estados mais ricos e os mais pobres reforça a necessidade de políticas públicas voltadas ao desenvolvimento das regiões menos favorecidas, especialmente Norte e Nordeste.
